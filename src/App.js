@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import SimpleStorageContract from '../build/contracts/SimpleStorage.json';
+import FieldContract from '../build/contracts/Field.json';
 import Web3 from 'web3';
 
 import './css/oswald.css';
@@ -25,23 +26,43 @@ class App extends Component {
     const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:9545'));
     const eth = web3.eth;
 
-    const deployedSimpleStorage = new web3.eth.Contract(SimpleStorageContract.abi, SimpleStorageContract.networks['4447'].address, {
+    const deployedSimpleStorageContract = new web3.eth.Contract(SimpleStorageContract.abi, SimpleStorageContract.networks['4447'].address, {
       gasPrice: '1',
       gas: 100000
+    });
+
+    const deployedFieldContract = new web3.eth.Contract(FieldContract.abi, FieldContract.networks['4447'].address, {
+      gasPrice: '1',
+      gas: 100000,
+      gasLimit: 20000000
     });
 
     this.setState({
       web3,
       eth,
-      simpleStorage: deployedSimpleStorage,
+      simpleStorageContract: deployedSimpleStorageContract,
+      fieldContract: deployedFieldContract,
     }, () => {
       this.getStorageValue();
+      this.getField();
       this.getAccountBalance()
     });
   }
 
+  getField = () => {
+    const { account } = this.state;
+
+    this.state.fieldContract.methods.getFilledCells().send({
+        from: account,
+        gas: 3000000
+      })
+      .then((filledCells) => {
+        console.log(filledCells);
+      })
+  };
+
   getStorageValue = () => {
-    this.state.simpleStorage.methods.get().call()
+    this.state.simpleStorageContract.methods.get().call()
       .then((storageValue) => {
         this.setState({ storageValue });
       });
@@ -56,10 +77,10 @@ class App extends Component {
   };
 
   onGenerate = () => {
-    const { simpleStorage, account } = this.state;
+    const { simpleStorageContract, account } = this.state;
     const n = ~~(Math.random() * 1000);
 
-    simpleStorage.methods.set(n)
+    simpleStorageContract.methods.set(n)
       .send({ from: account }, (error, transactionAddress) => {
         console.log(error, transactionAddress);
 
