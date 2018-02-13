@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import SimpleStorageContract from '../build/contracts/SimpleStorage.json';
 import Eth from 'ethjs';
-import EthContract from 'ethjs-contract';
 
 import './css/oswald.css';
 import './css/open-sans.css';
@@ -14,54 +13,59 @@ class App extends Component {
 
     this.state = {
       storageValue: 0,
-      web3: null,
+      account: '0x2191ef87e392377ec08e7c08eb105ef5448eced5',
+      balance: 0,
+      eth: null,
     };
   }
 
   componentDidMount() {
-
-    console.log('Eth: ', Eth);
+    const { account } = this.state;
     const eth = new Eth(new Eth.HttpProvider('http://127.0.0.1:9545'));
-    const contract = EthContract(eth);
-    console.log('eth: ', eth, contract);
-
-    const etherValue = Eth.toWei(72, 'ether');
-
-    console.log('etherValue: ', etherValue);
-
-    const account = "0xf17f52151ebef6c7334fad080c5704d77216b732";
 
     const SimpleStore = eth.contract(SimpleStorageContract.abi, SimpleStorageContract.bytecode, {
       from: account,
       gas: 300000,
     });
-    //
-    console.log(SimpleStore);
 
     // setup an instance of that contract
-    const simpleStore = SimpleStore.at('0x82d50ad3c1091866e258fd0f1a7cc9674609d254');
+    const simpleStore = SimpleStore.at(SimpleStorageContract.networks["4447"].address);
 
     this.setState({
       account,
       simpleStore,
-    });
-    simpleStore.get().then((res) => {
-      this.setState({
-          storageValue: res[0].toNumber(),
-      })
+      eth
+    }, () => {
+      this.getStoreValue();
     });
   }
+
+  getStoreValue = () => {
+    this.state.simpleStore.get()
+      .then((res) => {
+        this.setState({
+          storageValue: res[0].toNumber(),
+        });
+
+        this.getAccountBalance()
+      });
+  };
+
+  getAccountBalance = () => {
+    const { eth, account } = this.state;
+
+    eth.getBalance(account).then(res => {
+      this.setState({
+        balance: res.toString(),
+      })
+    });
+  };
 
   onGenerate = () => {
     const { simpleStore } = this.state;
 
     simpleStore.set(~~(Math.random() * 1000))
-      .then(() => simpleStore.get())
-      .then((res) => {
-        this.setState({
-          storageValue: res[0].toNumber(),
-        })
-      })
+      .then(() => this.getStoreValue())
   };
 
   render() {
@@ -80,8 +84,10 @@ class App extends Component {
               <p>If your contracts compiled and migrated successfully, below will show a stored value of 5 (by
                 default).</p>
               <p>Try changing the value stored on <strong>line 59</strong> of App.js.</p>
+              <p>The current account is: { this.state.account }</p>
               <p>The stored value is: { this.state.storageValue }</p>
-              <button className="generateNew" onClick={this.onGenerate}>Generate</button>
+              <p>Balance: { this.state.balance }</p>
+              <button className="generateNew" onClick={ this.onGenerate }>Generate</button>
             </div>
           </div>
         </main>
