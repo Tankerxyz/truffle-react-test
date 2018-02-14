@@ -8,6 +8,29 @@ import './css/open-sans.css';
 import './css/pure-min.css';
 import './App.css';
 
+import { getNormalizedField } from './utils/fieldUtils';
+
+const COLOR = {
+  ...[
+    "#000000",
+    "#808080",
+    "#C0C0C0",
+    "#FFFFFF",
+    "#800000",
+    "#FF0000",
+    "#808000",
+    "#FFFF00",
+    "#008000",
+    "#00FF00",
+    "#008080",
+    "#00FFFF",
+    "#000080",
+    "#0000FF",
+    "#800080",
+    "#FF00FF",
+  ]
+};
+
 class App extends Component {
   constructor(props) {
     super(props);
@@ -19,6 +42,9 @@ class App extends Component {
       eth: null,
       web3: null,
       simpleStorage: null,
+
+      // gen empty 100 x 100 field
+      field: new Array(10).fill().map(() => new Array(10).fill().map(() => 0))
     };
   }
 
@@ -44,20 +70,38 @@ class App extends Component {
       fieldContract: deployedFieldContract,
     }, () => {
       this.getStorageValue();
-      this.getField();
+      this.updateField();
       this.getAccountBalance()
     });
   }
 
+  updateField = () => {
+    this.getField().then(() => {
+      const { field, filledCells } = this.state;
+
+      filledCells.forEach((filledCell) => {
+        const { x, y, color } = filledCell;
+
+        field[y][x] = color;
+      });
+
+      return new Promise((resolve) => this.setState({ field }, () => resolve()));
+    });
+  };
+
   getField = () => {
     const { account } = this.state;
 
-    this.state.fieldContract.methods.getFilledCells().send({
+    return this.state.fieldContract.methods.getFilledCells().call({
         from: account,
-        gas: 3000000
+        gas: 5000000
       })
       .then((filledCells) => {
-        console.log(filledCells);
+        const normalizedField = getNormalizedField(filledCells);
+
+        return new Promise((resolve) => {
+          this.setState({ filledCells: normalizedField }, () => resolve(normalizedField));
+        });
       })
   };
 
@@ -93,7 +137,42 @@ class App extends Component {
     this.getStorageValue();
   };
 
+  addToField = (x, y) => {
+    const { fieldContract, account } = this.state;
+    const color = this.getRandomNumber(16 - 1) + 1;
+
+    fieldContract.methods.fillCell(x, y, color).send({
+      from: account,
+      gas: 3000000,
+    }).then(() => {
+      this.updateField();
+      this.getAccountBalance();
+    })
+  };
+
+  getRandomNumber = (max) => {
+    return ~~(Math.random() * max);
+  };
+
+  onCellClick = (y, x) => {
+    const { field } = this.state;
+    const fieldHeight = field.length;
+    const fieldWidth = field[0].length;
+
+    if ( y >= 0 && y < fieldHeight
+      && x >= 0 && x < fieldWidth
+      && !field[y][x]
+    ) {
+      console.log(y, x);
+      this.addToField(x, y);
+    } else {
+      alert('Oops!')
+    }
+  };
+
   render() {
+    const { field } = this.state;
+
     return (
       <div className="App">
         <nav className="navbar pure-menu pure-menu-horizontal">
@@ -114,6 +193,23 @@ class App extends Component {
               <p>Balance: { this.state.balance }</p>
               <button className="generateNew" onClick={ this.onGenerate }>Generate</button>
             </div>
+          </div>
+          <div className="field">
+            {
+              field.map((row, rowIndex) => {
+
+                return (
+                  <div key={rowIndex} className="row">{
+                    row.map((cell, cellIndex) => {
+                      return (
+                        <div key={cellIndex} className="cell" style={{ backgroundColor: COLOR[cell] }} onClick={() => this.onCellClick(rowIndex, cellIndex)} />
+                      )
+                    })
+                  }</div>
+                );
+
+              })
+            }
           </div>
         </main>
       </div>

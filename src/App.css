@@ -66,3 +66,31 @@ code {
   height: 16px;
   margin-right: 10px;
 }
+
+.field {
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  flex-direction: column;
+
+  min-width: 800px;
+  min-height: 800px;
+
+  cursor: pointer;
+}
+.field .row {
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.field .row .cell {
+  width: 10px;
+  height: 10px;
+
+  transition: opacity 0.2s;
+}
+
+.field .row .cell:hover {
+  opacity: 0.7;
+}
